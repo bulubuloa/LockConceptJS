@@ -7,14 +7,14 @@ The RenewTokenHelper class is designed to manage the renewal of an authenticatio
 ### Singleton Pattern:
 - Ensures that only one instance of RenewTokenHelper exists at any given time.
 - This is achieved using a private constructor and a static method getInstance() which returns the single instance of the class.
-```
+```js
 private static instance: RenewTokenHelper;
 
 private constructor() { }
 
 public static getInstance(): RenewTokenHelper {
  if (!RenewTokenHelper.instance) {
- RenewTokenHelper.instance = new RenewTokenHelper();
+    RenewTokenHelper.instance = new RenewTokenHelper();
  }
  return RenewTokenHelper.instance;
 }
@@ -23,7 +23,7 @@ public static getInstance(): RenewTokenHelper {
 ### Token Renewal Management:
 - The class handles the token renewal process, ensuring that only one renewal occurs at a time even if multiple requests are made simultaneously.
 - It uses a flag isRenewing to indicate whether a renewal is currently in progress.
-```
+```js
 private isRenewing = false;
 ```
 
@@ -31,63 +31,71 @@ private isRenewing = false;
 - If a renewal is already in progress, any additional requests are added to a waiting queue.
 - Each request in the queue will be resolved or rejected once the renewal process completes.
 
-```
+```js
 private waiting: WaitingPromise[] = [];
 ```
+
 ### Token Renewal Process:
 - The renewingToken method checks if a renewal is already in progress or if the token is already set. If not, it calls the renewToken method.
-```
+```js
 public async renewingToken(): Promise<boolean> {
  if (this.token) {
- return this.isRenewing;
+    return this.isRenewing;
  }
  return this.renewToken();
 }
 ```
+
 ### Renew Token Method:
 - This method manages the actual token renewal process. It sets the isRenewing flag to true and attempts to renew the token using oidcService.renewToken().
 - If the renewal is successful, it resolves all promises in the waiting queue. If it fails, it rejects all promises in the queue.
-```
-private async renewToken(): Promise<boolean> {
- if (this.isRenewing) {
- return new Promise((resolve, reject) => this.waiting.push({ resolve, reject }));
- }
+```js
+private async renewToken (): Promise<boolean> {
+    if (this.isRenewing) {
+      // If already renewing, wait for the renewal to complete
+      return new Promise((resolve, reject) => this.waiting.push({ resolve, reject }));
+    }
 
- this.isRenewing = true;
+    // Set the renewing flag
+    this.isRenewing = true;
 
- try {
- const successful = await Promise.race([
- oidcService.renewToken(),
- this.createTimeoutPromise(),
- ]);
+    try {
+      // Call the provided renewToken function
+      const successful = await Promise.race([
+        oidcService.renewToken(),
+        this.createTimeoutPromise()
+      ]);
 
- this.token = 'Renewed';
+      // Set the renewed token
+      this.token = 'Renewed';
 
- while (this.waiting.length > 0) {
- const { resolve } = this.waiting.shift()!;
- resolve(successful);
- }
+      // Resolve all waiting promises
+      while (this.waiting.length > 0) {
+        const { resolve } = this.waiting.shift()!;
+        resolve(successful);
+      }
 
- return successful;
- } catch (error) {
- while (this.waiting.length > 0) {
- const { reject } = this.waiting.shift()!;
- reject(error);
- }
- throw error;
- } finally {
- this.isRenewing = false;
- }
-}
-
+      return successful;
+    } catch (error) {
+      // If renewal fails, reject all waiting promises
+      while (this.waiting.length > 0) {
+        const { reject } = this.waiting.shift()!;
+        reject(error);
+      }
+      throw error;
+    } finally {
+      // Clear the renewing flag
+      this.isRenewing = false;
+    }
+  }
 ```
 
 ### Timeout Mechanism:
 - The class includes a timeout mechanism to ensure that if the renewal process takes too long, it will fail and reject all waiting promises.
-```sh
+```js
 private createTimeoutPromise(): Promise<never> {
  return new Promise((_, reject) =>
- setTimeout(() => reject(new Error('Token renewal timed out')), this.timeout)
+    setTimeout(() => reject(new Error('Token renewal timed out')), this.timeout)
  );
 }
 ```
