@@ -1,9 +1,5 @@
 ## RenewTokenHelper
 
-The RenewTokenHelper class is a robust utility for managing the renewal of authentication tokens in applications where multiple concurrent requests might occur. By using a Singleton pattern, a locking mechanism, and a queue, it ensures that only one renewal process occurs at a time, efficiently handling multiple simultaneous requests and providing a consistent state for the token renewal process.
-
-author: HoangQuach
-
 The RenewTokenHelper class is designed to manage the renewal of an authentication token in a safe and efficient manner, ensuring that concurrent requests for token renewal do not cause multiple renewals to occur simultaneously. This is achieved by using a combination of the Singleton pattern, a locking mechanism, and a queue to handle multiple requests.
 
 ## Key Features and Explanation
@@ -17,10 +13,10 @@ private static instance: RenewTokenHelper;
 private constructor() { }
 
 public static getInstance(): RenewTokenHelper {
-  if (!RenewTokenHelper.instance) {
-    RenewTokenHelper.instance = new RenewTokenHelper();
-  }
-  return RenewTokenHelper.instance;
+ if (!RenewTokenHelper.instance) {
+ RenewTokenHelper.instance = new RenewTokenHelper();
+ }
+ return RenewTokenHelper.instance;
 }
 ```
 
@@ -42,10 +38,10 @@ private waiting: WaitingPromise[] = [];
 - The renewingToken method checks if a renewal is already in progress or if the token is already set. If not, it calls the renewToken method.
 ```
 public async renewingToken(): Promise<boolean> {
-  if (this.token) {
-    return this.isRenewing;
-  }
-  return this.renewToken();
+ if (this.token) {
+ return this.isRenewing;
+ }
+ return this.renewToken();
 }
 ```
 ### Renew Token Method:
@@ -53,35 +49,35 @@ public async renewingToken(): Promise<boolean> {
 - If the renewal is successful, it resolves all promises in the waiting queue. If it fails, it rejects all promises in the queue.
 ```
 private async renewToken(): Promise<boolean> {
-  if (this.isRenewing) {
-    return new Promise((resolve, reject) => this.waiting.push({ resolve, reject }));
-  }
+ if (this.isRenewing) {
+ return new Promise((resolve, reject) => this.waiting.push({ resolve, reject }));
+ }
 
-  this.isRenewing = true;
+ this.isRenewing = true;
 
-  try {
-    const successful = await Promise.race([
-      oidcService.renewToken(),
-      this.createTimeoutPromise(),
-    ]);
+ try {
+ const successful = await Promise.race([
+ oidcService.renewToken(),
+ this.createTimeoutPromise(),
+ ]);
 
-    this.token = 'Renewed';
+ this.token = 'Renewed';
 
-    while (this.waiting.length > 0) {
-      const { resolve } = this.waiting.shift()!;
-      resolve(successful);
-    }
+ while (this.waiting.length > 0) {
+ const { resolve } = this.waiting.shift()!;
+ resolve(successful);
+ }
 
-    return successful;
-  } catch (error) {
-    while (this.waiting.length > 0) {
-      const { reject } = this.waiting.shift()!;
-      reject(error);
-    }
-    throw error;
-  } finally {
-    this.isRenewing = false;
-  }
+ return successful;
+ } catch (error) {
+ while (this.waiting.length > 0) {
+ const { reject } = this.waiting.shift()!;
+ reject(error);
+ }
+ throw error;
+ } finally {
+ this.isRenewing = false;
+ }
 }
 
 ```
@@ -90,12 +86,16 @@ private async renewToken(): Promise<boolean> {
 - The class includes a timeout mechanism to ensure that if the renewal process takes too long, it will fail and reject all waiting promises.
 ```sh
 private createTimeoutPromise(): Promise<never> {
-  return new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Token renewal timed out')), this.timeout)
-  );
+ return new Promise((_, reject) =>
+ setTimeout(() => reject(new Error('Token renewal timed out')), this.timeout)
+ );
 }
 ```
 
 ## License
+
+The RenewTokenHelper class is a robust utility for managing the renewal of authentication tokens in applications where multiple concurrent requests might occur. By using a Singleton pattern, a locking mechanism, and a queue, it ensures that only one renewal process occurs at a time, efficiently handling multiple simultaneous requests and providing a consistent state for the token renewal process.
+
+author: HoangQuach
 
 MIT
